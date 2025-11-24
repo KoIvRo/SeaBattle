@@ -42,31 +42,9 @@
                             Text="Rotate Ship" 
                             Clicked="OnRotateClicked"/>
                 </HorizontalStackLayout>
+                <!-- ДОБАВЛЯЕМ ОТОБРАЖЕНИЕ ПРОГРЕССА -->
                 <Label x:Name="ShipsProgressLabel"
-                       Text="Ships: 0/3"
-                       FontSize="12"
-                       HorizontalOptions="Center"/>
-            </VerticalStackLayout>
-
-            <!-- Special Attacks -->
-            <VerticalStackLayout Spacing="5" IsVisible="{Binding Source={x:Reference SpecialAttacksStack}, Path=IsVisible}">
-                <Label Text="Special Attacks (One use per game):" FontSize="14" FontAttributes="Bold"/>
-                <StackLayout x:Name="SpecialAttacksStack" Orientation="Horizontal" HorizontalOptions="Center" Spacing="10">
-                    <Button x:Name="LineHorizontalBtn" 
-                            Text="Horizontal Line" 
-                            Clicked="OnLineHorizontalClicked"
-                            BackgroundColor="LightGreen"/>
-                    <Button x:Name="LineVerticalBtn" 
-                            Text="Vertical Line" 
-                            Clicked="OnLineVerticalClicked"
-                            BackgroundColor="LightBlue"/>
-                    <Button x:Name="Area3x3Btn" 
-                            Text="3x3 Area" 
-                            Clicked="OnArea3x3Clicked"
-                            BackgroundColor="LightCoral"/>
-                </StackLayout>
-                <Label x:Name="SpecialAttackStatusLabel"
-                       Text="Select special attack and click on enemy board"
+                       Text="Ships: 0/5"
                        FontSize="12"
                        HorizontalOptions="Center"/>
             </VerticalStackLayout>
