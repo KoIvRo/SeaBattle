@@ -6,7 +6,6 @@
     <ScrollView>
         <VerticalStackLayout Spacing="15" Padding="30,0">
 
-            <!-- Server Controls -->
             <HorizontalStackLayout Spacing="10">
                 <Button x:Name="StartServerBtn" 
                         Text="Start Server" 
@@ -17,13 +16,11 @@
                         IsEnabled="False"/>
             </HorizontalStackLayout>
 
-            <!-- Game Status -->
             <Label x:Name="StatusLabel" 
                    Text="Not connected" 
                    FontSize="16" 
                    HorizontalOptions="Center"/>
 
-            <!-- Available Servers -->
             <Label Text="Available Servers:" FontSize="14" FontAttributes="Bold"/>
             <ListView x:Name="ServersListView" 
                       HeightRequest="120"
@@ -35,7 +32,6 @@
                 </ListView.ItemTemplate>
             </ListView>
 
-            <!-- Ship Placement Controls -->
             <VerticalStackLayout Spacing="5">
                 <HorizontalStackLayout Spacing="10">
                     <Button x:Name="RotateBtn" 
@@ -48,7 +44,6 @@
                        HorizontalOptions="Center"/>
             </VerticalStackLayout>
 
-            <!-- Special Attacks -->
             <VerticalStackLayout Spacing="5" IsVisible="{Binding Source={x:Reference SpecialAttacksStack}, Path=IsVisible}">
                 <Label Text="Special Attacks (One use per game):" FontSize="14" FontAttributes="Bold"/>
                 <StackLayout x:Name="SpecialAttacksStack" Orientation="Horizontal" HorizontalOptions="Center" Spacing="10">
@@ -71,7 +66,6 @@
                        HorizontalOptions="Center"/>
             </VerticalStackLayout>
 
-            <!-- Game Board -->
             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
                 <Label Grid.Row="0" Grid.Column="0" Text="Your Board" FontSize="14" FontAttributes="Bold"/>
                 <Label Grid.Row="0" Grid.Column="1" Text="Enemy Board" FontSize="14" FontAttributes="Bold"/>
@@ -86,7 +80,6 @@
                        HorizontalOptions="Center" FontSize="12"/>
             </Grid>
 
-            <!-- Game Controls -->
             <Button x:Name="ReadyBtn" 
                     Text="Ready" 
                     Clicked="OnReadyClicked"
