@@ -252,6 +252,7 @@ namespace SeaBattle
             {
                 if (isGameOver) return;
 
+                // Обработка обычного выстрела от противника
                 if (message.StartsWith("SHOT:"))
                 {
                     var parts = message.Split(':');
@@ -279,6 +280,7 @@ namespace SeaBattle
                         }
                     }
                 }
+                // Обработка результата нашего выстрела
                 else if (message.StartsWith("RESULT:"))
                 {
                     var parts = message.Split(':');
@@ -305,10 +307,12 @@ namespace SeaBattle
                         }
                     }
                 }
+                // Противник готов к игре
                 else if (message == "READY")
                 {
                     gameEngine.SetEnemyReady(true);
                 }
+                // Противник победил
                 else if (message == "WIN")
                 {
                     isGameOver = true;
@@ -413,6 +417,7 @@ namespace SeaBattle
             }
         }
 
+        // Обработка горизонтальной атаки на игроке
         private bool ProcessHorizontalLineAttackOnPlayer(int startX, int startY)
         {
             bool hitSomething = false;
@@ -461,6 +466,7 @@ namespace SeaBattle
             return hitSomething;
         }
 
+        // Обработка вертикальной атаки на игроке
         private bool ProcessVerticalLineAttackOnPlayer(int startX, int startY)
         {
             bool hitSomething = false;
@@ -509,6 +515,7 @@ namespace SeaBattle
             return hitSomething;
         }
 
+        // Обработка атаки области 3x3 на игроке
         private bool ProcessArea3x3AttackOnPlayer(int centerX, int centerY)
         {
             bool hitSomething = false;
@@ -536,6 +543,7 @@ namespace SeaBattle
             return hitSomething;
         }
 
+        // Проверка условия победы над противником
         private bool CheckEnemyWinCondition()
         {
             int hitCount = 0;
@@ -552,6 +560,7 @@ namespace SeaBattle
             return hitCount >= 10;
         }
 
+        // Инициализация новой игры
         private void InitializeGame()
         {
             gameEngine.ResetGame();
@@ -564,12 +573,14 @@ namespace SeaBattle
             SpecialAttacksStack.IsVisible = false;
         }
 
+        // Создание игровых досок
         private void CreateGameBoards()
         {
             CreateGrid(PlayerGrid, true);
             CreateGrid(EnemyGrid, false);
         }
 
+        // Создание сетки для игровой доски
         private void CreateGrid(Grid grid, bool isPlayerGrid)
         {
             grid.Children.Clear();
@@ -616,6 +627,7 @@ namespace SeaBattle
             UpdateBoardDisplay();
         }
 
+        // Обработка клика по своей доске (размещение кораблей)
         private void OnPlayerGridClicked(int x, int y)
         {
             if (isGameOver) return;
@@ -647,6 +659,7 @@ namespace SeaBattle
             }
         }
 
+        // Обработка клика по доске противника (атака)
         private async void OnEnemyGridClicked(int x, int y)
         {
             if (isGameOver) return;
@@ -667,6 +680,7 @@ namespace SeaBattle
             }
         }
 
+        // Выполнение специальной атаки
         private async Task ExecuteSpecialAttack(int x, int y)
         {
             (int x, int y, bool hit)[] shots = Array.Empty<(int, int, bool)>();
@@ -746,6 +760,7 @@ namespace SeaBattle
             SpecialAttackStatusLabel.Text = "3x3 Area selected - click on enemy board";
         }
 
+        // Обновление прогресса расстановки кораблей
         private void UpdateShipsProgress()
         {
             ShipsProgressLabel.Text = $"Ships: {gameEngine.PlacedShipsCount}/{gameEngine.TotalShipsCount} " +
@@ -753,6 +768,7 @@ namespace SeaBattle
                                     $"{(gameEngine.IsShipHorizontal ? "Horizontal" : "Vertical")})";
         }
 
+        // Обновление состояния специальных атак
         private void UpdateSpecialAttacks()
         {
             LineHorizontalBtn.IsEnabled = gameEngine.HasLineHorizontalAttack;
@@ -781,6 +797,7 @@ namespace SeaBattle
             });
         }
 
+        // Поворот корабля при расстановке
         private void OnRotateClicked(object sender, EventArgs e)
         {
             if (isGameOver) return;
@@ -788,6 +805,7 @@ namespace SeaBattle
             UpdateShipsProgress();
         }
 
+        // Подготовка к игре (готовность игрока)
         private async void OnReadyClicked(object sender, EventArgs e)
         {
             if (isGameOver) return;
@@ -812,6 +830,7 @@ namespace SeaBattle
             }
         }
 
+        // Обработка изменения состояния игры
         private void OnGameStateChanged(GameState newState)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -848,12 +867,14 @@ namespace SeaBattle
             UpdateBoardDisplay();
         }
 
+        // Обновление отображения игровых досок
         private void UpdateBoardDisplay()
         {
             UpdateGrid(PlayerGrid, true);
             UpdateGrid(EnemyGrid, false);
         }
 
+        // Обновление сетки игровой доски
         private void UpdateGrid(Grid grid, bool isPlayerGrid)
         {
             for (int x = 0; x < 10; x++)
