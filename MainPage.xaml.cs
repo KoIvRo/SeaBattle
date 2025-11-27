@@ -18,6 +18,9 @@ namespace SeaBattle
         public bool IsGameOver { get; private set; }
         private bool isServerMode = false;
 
+        /// <summary>
+        /// Конструктор главной страницы
+        /// </summary>
         public MainPage()
         {
             InitializeComponent();
@@ -52,6 +55,10 @@ namespace SeaBattle
             SpecialAttacksStack.IsVisible = false;
         }
 
+        /// <summary>
+        /// Обновление статуса игры на интерфейсе
+        /// </summary>
+        /// <param name="status">Текст статуса</param>
         public void UpdateGameStatus(string status)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -60,11 +67,18 @@ namespace SeaBattle
             });
         }
 
+        /// <summary>
+        /// Обновление отображения игровых досок
+        /// </summary>
         public void UpdateBoardDisplay()
         {
             boardManager.UpdateBoardDisplay();
         }
 
+        /// <summary>
+        /// Проверка условия победы противника
+        /// </summary>
+        /// <returns>True если противник победил, иначе False</returns>
         public bool CheckEnemyWinCondition()
         {
             int hitCount = 0;
@@ -81,6 +95,10 @@ namespace SeaBattle
             return hitCount >= 10;
         }
 
+        /// <summary>
+        /// Завершение игры
+        /// </summary>
+        /// <param name="isWinner">True если игрок победил, False если проиграл</param>
         public void EndGame(bool isWinner)
         {
             IsGameOver = true;
@@ -100,6 +118,9 @@ namespace SeaBattle
             });
         }
 
+        /// <summary>
+        /// Настройка обработчиков событий
+        /// </summary>
         private void SetupEventHandlers()
         {
             p2pServer.client.MessageReceived += messageHandler.OnMessageReceived;
@@ -112,6 +133,9 @@ namespace SeaBattle
             gameEngine.SpecialAttacksUpdated += OnSpecialAttacksUpdated;
         }
 
+        /// <summary>
+        /// Запуск обнаружения серверов
+        /// </summary>
         private void StartDiscovery()
         {
             try
@@ -124,6 +148,9 @@ namespace SeaBattle
             catch (Exception) { }
         }
 
+        /// <summary>
+        /// Очистка устаревших серверов из списка
+        /// </summary>
         private async Task ServerCleaner()
         {
             while (true)
@@ -137,6 +164,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Удаление серверов, которые не отвечают
+        /// </summary>
         private void CleanOldServers()
         {
             var now = DateTime.Now;
@@ -162,6 +192,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик нажатия кнопки запуска сервера
+        /// </summary>
         private async void OnStartServerClicked(object sender, EventArgs e)
         {
             try
@@ -185,6 +218,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик нажатия кнопки остановки сервера
+        /// </summary>
         private async void OnStopServerClicked(object sender, EventArgs e)
         {
             try
@@ -212,6 +248,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик нажатия кнопки отключения
+        /// </summary>
         private async void OnDisconnectClicked(object sender, EventArgs e)
         {
             try
@@ -251,6 +290,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик выбора сервера из списка
+        /// </summary>
         private async void OnServerSelected(object sender, SelectedItemChangedEventArgs e)
         {
             if (e.SelectedItem is ServerInfo server)
@@ -278,6 +320,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик обнаружения нового сервера
+        /// </summary>
         private void OnServerFound(string ip, string name)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -301,6 +346,9 @@ namespace SeaBattle
             });
         }
 
+        /// <summary>
+        /// Обработчик подключения клиента к серверу
+        /// </summary>
         private void OnClientConnected(string clientIp)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -317,6 +365,9 @@ namespace SeaBattle
             });
         }
 
+        /// <summary>
+        /// Инициализация новой игры
+        /// </summary>
         private void InitializeGame()
         {
             gameEngine.ResetGame();
@@ -329,6 +380,9 @@ namespace SeaBattle
             SpecialAttacksStack.IsVisible = false;
         }
 
+        /// <summary>
+        /// Обработчик клика по сетке игрока
+        /// </summary>
         private void OnPlayerGridClicked(int x, int y)
         {
             if (IsGameOver) return;
@@ -361,6 +415,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик клика по сетке противника
+        /// </summary>
         private async void OnEnemyGridClicked(int x, int y)
         {
             if (IsGameOver) return;
@@ -379,6 +436,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик выбора горизонтальной линии атаки
+        /// </summary>
         private void OnLineHorizontalClicked(object sender, EventArgs e)
         {
             if (IsGameOver) return;
@@ -386,6 +446,9 @@ namespace SeaBattle
             SpecialAttackStatusLabel.Text = "Horizontal Line selected - click on enemy board";
         }
 
+        /// <summary>
+        /// Обработчик выбора вертикальной линии атаки
+        /// </summary>
         private void OnLineVerticalClicked(object sender, EventArgs e)
         {
             if (IsGameOver) return;
@@ -393,6 +456,9 @@ namespace SeaBattle
             SpecialAttackStatusLabel.Text = "Vertical Line selected - click on enemy board";
         }
 
+        /// <summary>
+        /// Обработчик выбора области 3x3 атаки
+        /// </summary>
         private void OnArea3x3Clicked(object sender, EventArgs e)
         {
             if (IsGameOver) return;
@@ -400,6 +466,9 @@ namespace SeaBattle
             SpecialAttackStatusLabel.Text = "3x3 Area selected - click on enemy board";
         }
 
+        /// <summary>
+        /// Обновление прогресса размещения кораблей
+        /// </summary>
         private void UpdateShipsProgress()
         {
             ShipsProgressLabel.Text = $"Ships: {gameEngine.PlacedShipsCount}/{gameEngine.TotalShipsCount} " +
@@ -407,6 +476,9 @@ namespace SeaBattle
                                     $"{(gameEngine.IsShipHorizontal ? "Horizontal" : "Vertical")})";
         }
 
+        /// <summary>
+        /// Обновление состояния специальных атак
+        /// </summary>
         public void UpdateSpecialAttacks()
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -430,11 +502,17 @@ namespace SeaBattle
             });
         }
 
+        /// <summary>
+        /// Обработчик обновления специальных атак
+        /// </summary>
         private void OnSpecialAttacksUpdated()
         {
             UpdateSpecialAttacks();
         }
 
+        /// <summary>
+        /// Обработчик нажатия кнопки поворота корабля
+        /// </summary>
         private void OnRotateClicked(object sender, EventArgs e)
         {
             if (IsGameOver) return;
@@ -442,6 +520,9 @@ namespace SeaBattle
             UpdateShipsProgress();
         }
 
+        /// <summary>
+        /// Обработчик нажатия кнопки готовности
+        /// </summary>
         private async void OnReadyClicked(object sender, EventArgs e)
         {
             if (IsGameOver) return;
@@ -466,6 +547,9 @@ namespace SeaBattle
             }
         }
 
+        /// <summary>
+        /// Обработчик изменения состояния игры
+        /// </summary>
         private void OnGameStateChanged(GameState newState)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -497,11 +581,20 @@ namespace SeaBattle
             });
         }
 
+        /// <summary>
+        /// Обработчик обновления игровой доски
+        /// </summary>
         private void OnBoardUpdated()
         {
             UpdateBoardDisplay();
         }
 
+        /// <summary>
+        /// Обработка специальной атаки противника
+        /// </summary>
+        /// <param name="attackType">Тип атаки</param>
+        /// <param name="startX">Координата X</param>
+        /// <param name="startY">Координата Y</param>
         public async Task ProcessEnemySpecialAttack(string attackType, int startX, int startY)
         {
             await attackHandler.ProcessEnemySpecialAttack(attackType, startX, startY);

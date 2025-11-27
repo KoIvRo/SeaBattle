@@ -8,7 +8,6 @@
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="20,10" BackgroundColor="#2d3748">
 
-            <!-- Header -->
             <Frame BackgroundColor="#1a202c" CornerRadius="15" Padding="15" HasShadow="True">
                 <HorizontalStackLayout Spacing="15" HorizontalOptions="Center">
                     <Image Source="ship_icon.png" HeightRequest="30" WidthRequest="30" 
@@ -21,7 +20,6 @@
                 </HorizontalStackLayout>
             </Frame>
 
-            <!-- Server Controls -->
             <Frame BackgroundColor="#4a5568" CornerRadius="12" Padding="15" HasShadow="True">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="SERVER CONTROLS" 

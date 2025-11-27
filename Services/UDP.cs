@@ -4,6 +4,9 @@ using System.Text;
 
 namespace SeaBattle.Services
 {
+    /// <summary>
+    /// Сервис обнаружения серверов в локальной сети
+    /// </summary>
     public class ServerDiscovery
     {
         private const int DiscoveryPort = 8081;
@@ -15,7 +18,10 @@ namespace SeaBattle.Services
 
         public event Action<string, string> ServerFound;
 
-
+        /// <summary>
+        /// Запуск широковещательной рассылки для объявления сервера
+        /// </summary>
+        /// <param name="username">Имя пользователя/сервера</param>
         public async Task StartBroadcasting(string username = "user")
         {
             if (isBroadcasting)
@@ -41,6 +47,9 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Отправка широковещательного сообщения о наличии сервера
+        /// </summary>
         private void SendBroadcast()
         {
             using (UdpClient client = new UdpClient())
@@ -58,6 +67,9 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Запуск прослушивания широковещательных сообщений от серверов
+        /// </summary>
         public async Task StartListening()
         {
             if (isListening) return;
@@ -98,6 +110,9 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Остановка всех операций обнаружения серверов
+        /// </summary>
         public void Stop()
         {
             try

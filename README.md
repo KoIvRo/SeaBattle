@@ -70,7 +70,206 @@
 * `Empty` - пустая
 * `Ship` - корабль
 * `Hit` - попадание (красный)
-* `Miss` - промах (белый)
+* `Miss` - промах (белый)# Sea Battle - Морской бой
+
+## Архитектура проекта
+
+### Структура решения
+```
+SeaBattle/
+├── Models/           # Игровые модели и логика
+├── Services/         # Сетевые сервисы и обработчики
+├── MainPage.xaml     # Основной UI
+└── MainPage.xaml.cs  # Логика главной страницы
+```
+
+## Детальная документация классов
+
+### Models/GameEngine.cs
+**Центральный игровой движок, управляющий всей логикой игры**
+
+#### Основные свойства:
+- `PlayerBoard[10,10]`, `EnemyBoard[10,10]` - игровые поля 10x10 клеток
+- `CurrentState` - текущее состояние игры (расстановка, ход игрока, ход противника)
+- `PlacedShipsCount` - количество размещенных кораблей
+- `SelectedSpecialAttack` - выбранная специальная атака
+
+#### Ключевые методы:
+- `PlaceShip(int x, int y)` - размещение корабля на поле игрока
+- `ProcessEnemyShot(int x, int y)` - обработка выстрела противника
+- `ExecuteLineHorizontalAttack(int x, int y)` - выполнение горизонтальной атаки
+- `CheckWinCondition()` - проверка условия победы
+- `RotateShip()` - поворот текущего корабля
+- `SetPlayerReady(bool ready)` - установка готовности игрока
+
+#### Перечисления:
+- `GameState` - состояния игры: ShipPlacement, PlayerTurn, EnemyTurn, GameOver
+- `CellState` - состояния клетки: Empty, Ship, Hit, Miss
+- `ShipType` - типы кораблей: FourDecker (4 клетки), ThreeDecker (3 клетки)
+- `SpecialAttack` - типы атак: None, LineHorizontal, LineVertical, Area3x3
+
+### Services/GameBoardManager.cs
+**Управление отображением игровых досок**
+
+#### Конструктор:
+```csharp
+GameBoardManager(GameEngine, Grid playerGrid, Grid enemyGrid, 
+                 Action<int,int> onPlayerClick, Action<int,int> onEnemyClick)
+```
+
+#### Основные методы:
+- `CreateGameBoards()` - создание игровых сеток 10x10
+- `UpdateBoardDisplay()` - обновление отображения всех досок
+- `UpdateGrid(Grid grid, bool isPlayerGrid)` - обновление отдельной сетки
+
+#### Особенности:
+- Создает кнопки для каждой клетки с обработчиками кликов
+- Автоматически обновляет цвета клеток при изменении состояния
+
+### Services/NetworkMessageHandler.cs
+**Обработчик сетевых сообщений между игроками**
+
+#### Конструктор:
+```csharp
+NetworkMessageHandler(GameEngine, P2PServer, Func<bool> getIsGameOver, 
+                      Action<string> updateStatus, Action<bool> endGame, ...)
+```
+
+#### Методы обработки сообщений:
+- `HandleShotMessage(string message)` - обработка выстрела противника
+- `HandleResultMessage(string message)` - обработка результата выстрела
+- `HandleReadyMessage()` - обработка готовности противника
+- `HandleSpecialAttackMessage(string message)` - обработка специальной атаки
+
+#### Протокол сообщений:
+- `SHOT:x:y` - выстрел в координаты
+- `RESULT:x:y:HIT/MISS` - результат выстрела
+- `READY` - подтверждение готовности
+- `SPECIAL:type:x:y` - специальная атака
+
+### Services/SpecialAttackHandler.cs
+**Управление специальными атаками**
+
+#### Основные методы:
+- `ExecuteSpecialAttack(int x, int y)` - выполнение атаки по противнику
+- `ProcessEnemySpecialAttack(string type, int x, int y)` - обработка атаки противника
+- `ProcessHorizontalLineAttackOnPlayer()` - обработка горизонтальной атаки
+- `ProcessArea3x3AttackOnPlayer()` - обработка атаки области 3x3
+
+#### Типы атак:
+- **Horizontal Line** - атака по всей горизонтальной линии
+- **Vertical Line** - атака по всему вертикальному столбцу
+- **3x3 Area** - атака области 3x3 вокруг цели
+
+### Services/TcpMessageClient.cs
+**TCP клиент для сетевого соединения**
+
+#### Основные методы:
+- `ConnectToServer(string ip, int port)` - подключение к серверу
+- `SendMessageAsync(string message)` - отправка сообщения
+- `StartReading()` - запуск чтения входящих сообщений
+
+#### Свойства:
+- `IsConnected` - статус подключения
+- `MessageReceived` - событие получения сообщения
+
+### Services/TcpMessageServer.cs
+**TCP сервер для приема подключений**
+
+#### Основные методы:
+- `StartListeningAsync()` - запуск прослушивания порта
+- `StopListening()` - остановка сервера
+- `SendMessageToClient(string ip, string message)` - отправка сообщения клиенту
+
+#### События:
+- `MessageReceived` - получение сообщения от клиента
+- `ClientConnected` - подключение нового клиента
+
+### Services/ServerDiscovery.cs
+**Обнаружение серверов в локальной сети**
+
+#### Основные методы:
+- `StartBroadcasting(string username)` - запуск широковещательной рассылки
+- `StartListening()` - прослушивание широковещательных сообщений
+- `Stop()` - остановка всех операций
+
+#### Особенности:
+- Использует UDP broadcast на порту 8081
+- Формат сообщения: `SERVER:username`
+- Автоматическое обновление списка доступных серверов
+
+### Services/P2PServer.cs
+**Основной класс P2P соединения**
+
+#### Компоненты:
+- `TcpMessageServer server` - TCP сервер
+- `TcpMessageClient client` - TCP клиент  
+- `ServerDiscovery discovery` - обнаружение серверов
+
+#### Основные методы:
+- `StartServer()` - запуск в режиме сервера
+- `ConnectToServer(string ip)` - подключение к серверу
+- `SendMessage(string message)` - отправка сообщения
+
+### MainPage.xaml.cs
+**Главная страница приложения - связывает все компоненты**
+
+#### Основные обработчики событий:
+- `OnStartServerClicked()` - запуск сервера
+- `OnServerSelected()` - выбор сервера из списка
+- `OnPlayerGridClicked()` - клик по полю игрока
+- `OnEnemyGridClicked()` - клик по полю противника
+- `OnReadyClicked()` - подтверждение готовности
+
+#### Управление состоянием UI:
+- `UpdateGameStatus(string status)` - обновление статуса игры
+- `UpdateBoardDisplay()` - обновление игровых досок
+- `UpdateSpecialAttacks()` - обновление состояния атак
+
+## Игровой процесс
+
+### Фаза 1: Расстановка кораблей
+1. Игрок кликает по своему полю для размещения кораблей
+2. Кнопка Rotate меняет ориентацию корабля
+3. После размещения всех кораблей - кнопка Ready
+
+### Фаза 2: Боевые действия
+1. Игроки поочередно стреляют по полю противника
+2. При попадании - ход продолжается
+3. При промахе - ход переходит противнику
+4. Специальные атаки доступны один раз за игру
+
+### Условия победы
+- Побеждает игрок, первым потопивший все корабли противника
+- Проверка выполняется после каждого успешного попадания
+
+## Сетевое взаимодействие
+
+### Режимы работы:
+- **Сервер** - ожидает подключения, рассылает broadcast сообщения
+- **Клиент** - ищет серверы, подключается к выбранному
+
+### Протокол связи:
+- TCP порт 8080 для игровых сообщений
+- UDP порт 8081 для обнаружения серверов
+- JSON-подобный текстовый протокол
+
+## Особенности реализации
+
+### Обработка ошибок:
+- Автоматическое восстановление при разрыве соединения
+- Валидация всех входящих сообщений
+- Обработка исключений в сетевых операциях
+
+### Потокобезопасность:
+- Использование MainThread.BeginInvokeOnMainThread для UI операций
+- Синхронизация доступа к игровому состоянию
+- Отмена асинхронных операций при остановке
+
+### Производительность:
+- Минимальные сетевые сообщения
+- Локальная валидация ходов
+- Эффективное обновление UI
 
 ## Особенности
 * P2P-архитектура без центрального сервера

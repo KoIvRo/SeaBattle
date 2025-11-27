@@ -2,6 +2,9 @@
 
 namespace SeaBattle.Services
 {
+    /// <summary>
+    /// Обработчик специальных атак - управляет выполнением и обработкой специальных атак
+    /// </summary>
     public class SpecialAttackHandler
     {
         private GameEngine gameEngine;
@@ -12,6 +15,16 @@ namespace SeaBattle.Services
         private Func<bool> checkEnemyWinCondition;
         private Action<string> updateGameStatus;
 
+        /// <summary>
+        /// Конструктор обработчика специальных атак
+        /// </summary>
+        /// <param name="gameEngine">Игровой движок</param>
+        /// <param name="p2pServer">P2P сервер</param>
+        /// <param name="updateBoardDisplay">Метод обновления отображения доски</param>
+        /// <param name="updateSpecialAttacks">Метод обновления специальных атак</param>
+        /// <param name="endGame">Метод завершения игры</param>
+        /// <param name="checkEnemyWinCondition">Функция проверки победы противника</param>
+        /// <param name="updateGameStatus">Метод обновления статуса игры</param>
         public SpecialAttackHandler(GameEngine gameEngine, P2PServer p2pServer,
                                   Action updateBoardDisplay, Action updateSpecialAttacks,
                                   Action<bool> endGame, Func<bool> checkEnemyWinCondition,
@@ -26,6 +39,11 @@ namespace SeaBattle.Services
             this.updateGameStatus = updateGameStatus;
         }
 
+        /// <summary>
+        /// Выполнение специальной атаки по противнику
+        /// </summary>
+        /// <param name="x">Координата X</param>
+        /// <param name="y">Координата Y</param>
         public async Task ExecuteSpecialAttack(int x, int y)
         {
             (int x, int y, bool hit)[] shots = Array.Empty<(int, int, bool)>();
@@ -78,6 +96,12 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка специальной атаки противника
+        /// </summary>
+        /// <param name="attackType">Тип атаки</param>
+        /// <param name="startX">Координата X начала атаки</param>
+        /// <param name="startY">Координата Y начала атаки</param>
         public async Task ProcessEnemySpecialAttack(string attackType, int startX, int startY)
         {
             string attackName = attackType switch
@@ -125,6 +149,12 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка горизонтальной линии атаки на игрока
+        /// </summary>
+        /// <param name="startX">Координата X</param>
+        /// <param name="startY">Координата Y</param>
+        /// <returns>True если было попадание, иначе False</returns>
         private bool ProcessHorizontalLineAttackOnPlayer(int startX, int startY)
         {
             bool hitSomething = false;
@@ -148,6 +178,12 @@ namespace SeaBattle.Services
             return hitSomething;
         }
 
+        /// <summary>
+        /// Обработка вертикальной линии атаки на игрока
+        /// </summary>
+        /// <param name="startX">Координата X</param>
+        /// <param name="startY">Координата Y</param>
+        /// <returns>True если было попадание, иначе False</returns>
         private bool ProcessVerticalLineAttackOnPlayer(int startX, int startY)
         {
             bool hitSomething = false;
@@ -171,6 +207,12 @@ namespace SeaBattle.Services
             return hitSomething;
         }
 
+        /// <summary>
+        /// Обработка области 3x3 атаки на игрока
+        /// </summary>
+        /// <param name="centerX">Координата X центра области</param>
+        /// <param name="centerY">Координата Y центра области</param>
+        /// <returns>True если было попадание, иначе False</returns>
         private bool ProcessArea3x3AttackOnPlayer(int centerX, int centerY)
         {
             bool hitSomething = false;

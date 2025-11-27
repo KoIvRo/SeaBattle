@@ -4,6 +4,9 @@ using System.Text;
 
 namespace SeaBattle.Services
 {
+    /// <summary>
+    /// TCP клиент для отправки и получения сообщений
+    /// </summary>
     public class TcpMessageClient
     {
         private TcpClient client;
@@ -15,6 +18,12 @@ namespace SeaBattle.Services
 
         public bool IsConnected => client?.Connected == true;
 
+        /// <summary>
+        /// Подключение к серверу
+        /// </summary>
+        /// <param name="targetIp">IP адрес сервера</param>
+        /// <param name="port">Порт для подключения</param>
+        /// <returns>True если подключение успешно, иначе False</returns>
         public async Task<bool> ConnectToServer(string targetIp, int port)
         {
             try
@@ -25,7 +34,6 @@ namespace SeaBattle.Services
                 writer = new StreamWriter(stream, Encoding.UTF8);
                 reader = new StreamReader(stream, Encoding.UTF8);
 
-
                 StartReading();
                 return true;
             }
@@ -35,6 +43,9 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Запуск процесса чтения сообщений от сервера
+        /// </summary>
         private async void StartReading()
         {
             if (is_reading) return;
@@ -59,6 +70,11 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Отправка сообщения на сервер
+        /// </summary>
+        /// <param name="message">Сообщение для отправки</param>
+        /// <returns>True если сообщение отправлено успешно, иначе False</returns>
         public async Task<bool> SendMessageAsync(string message)
         {
             try
@@ -77,6 +93,9 @@ namespace SeaBattle.Services
         }
     }
 
+    /// <summary>
+    /// TCP сервер для приема подключений и обработки сообщений
+    /// </summary>
     public class TcpMessageServer
     {
         private int port = 8080;
@@ -87,6 +106,9 @@ namespace SeaBattle.Services
         public event Action<string, string> MessageReceived;
         public event Action<string> ClientConnected;
 
+        /// <summary>
+        /// Запуск прослушивания входящих подключений
+        /// </summary>
         public async Task StartListeningAsync()
         {
             if (is_listening) return;
@@ -114,6 +136,9 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Остановка прослушивания и отключение всех клиентов
+        /// </summary>
         public void StopListening()
         {
             is_listening = false;
@@ -127,6 +152,12 @@ namespace SeaBattle.Services
             tcpListener?.Stop();
         }
 
+        /// <summary>
+        /// Отправка сообщения конкретному клиенту
+        /// </summary>
+        /// <param name="clientIp">IP адрес клиента</param>
+        /// <param name="message">Сообщение для отправки</param>
+        /// <returns>True если сообщение отправлено успешно, иначе False</returns>
         public async Task<bool> SendMessageToClient(string clientIp, string message)
         {
             try
@@ -148,6 +179,11 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка подключенного клиента
+        /// </summary>
+        /// <param name="client">TCP клиент</param>
+        /// <param name="clientIp">IP адрес клиента</param>
         private async Task HandleClientAsync(TcpClient client, string clientIp)
         {
             try

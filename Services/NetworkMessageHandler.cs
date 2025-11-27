@@ -2,6 +2,9 @@
 
 namespace SeaBattle.Services
 {
+    /// <summary>
+    /// Обработчик сетевых сообщений - управляет получением и обработкой сообщений от противника
+    /// </summary>
     public class NetworkMessageHandler
     {
         private GameEngine gameEngine;
@@ -12,6 +15,16 @@ namespace SeaBattle.Services
         private Func<bool> checkEnemyWinCondition;
         private Func<string, int, int, Task> processEnemySpecialAttack;
 
+        /// <summary>
+        /// Конструктор обработчика сетевых сообщений
+        /// </summary>
+        /// <param name="gameEngine">Игровой движок</param>
+        /// <param name="p2pServer">P2P сервер</param>
+        /// <param name="getIsGameOver">Функция проверки завершения игры</param>
+        /// <param name="updateGameStatus">Метод обновления статуса игры</param>
+        /// <param name="endGame">Метод завершения игры</param>
+        /// <param name="checkEnemyWinCondition">Функция проверки победы противника</param>
+        /// <param name="processEnemySpecialAttack">Метод обработки специальной атаки противника</param>
         public NetworkMessageHandler(GameEngine gameEngine, P2PServer p2pServer,
                                    Func<bool> getIsGameOver, Action<string> updateGameStatus,
                                    Action<bool> endGame, Func<bool> checkEnemyWinCondition,
@@ -26,6 +39,11 @@ namespace SeaBattle.Services
             this.processEnemySpecialAttack = processEnemySpecialAttack;
         }
 
+        /// <summary>
+        /// Обработчик получения сообщения от противника
+        /// </summary>
+        /// <param name="ip">IP адрес отправителя</param>
+        /// <param name="message">Текст сообщения</param>
         public async void OnMessageReceived(string ip, string message)
         {
             if (getIsGameOver()) return;
@@ -56,6 +74,10 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка сообщения о выстреле противника
+        /// </summary>
+        /// <param name="message">Сообщение с координатами выстрела</param>
         private async Task HandleShotMessage(string message)
         {
             var parts = message.Split(':');
@@ -83,6 +105,10 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка сообщения о результате нашего выстрела
+        /// </summary>
+        /// <param name="message">Сообщение с результатом выстрела</param>
         private async Task HandleResultMessage(string message)
         {
             var parts = message.Split(':');
@@ -110,17 +136,27 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка сообщения о готовности противника
+        /// </summary>
         private void HandleReadyMessage()
         {
             gameEngine.SetEnemyReady(true);
         }
 
+        /// <summary>
+        /// Обработка сообщения о победе противника
+        /// </summary>
         private async Task HandleWinMessage()
         {
             // Получили WIN от противника - значит мы победили
             endGame(true);
         }
 
+        /// <summary>
+        /// Обработка сообщения о специальной атаке противника
+        /// </summary>
+        /// <param name="message">Сообщение с информацией об атаке</param>
         private async Task HandleSpecialAttackMessage(string message)
         {
             var parts = message.Split(':');
@@ -134,6 +170,10 @@ namespace SeaBattle.Services
             }
         }
 
+        /// <summary>
+        /// Обработка сообщения о результате специальной атаки
+        /// </summary>
+        /// <param name="message">Сообщение с результатом атаки</param>
         private async Task HandleSpecialResultMessage(string message)
         {
             var parts = message.Split(':');

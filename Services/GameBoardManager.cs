@@ -2,6 +2,9 @@
 
 namespace SeaBattle.Services
 {
+    /// <summary>
+    /// Менеджер игровых досок - отвечает за создание и обновление игровых сеток
+    /// </summary>
     public class GameBoardManager
     {
         private GameEngine gameEngine;
@@ -10,6 +13,14 @@ namespace SeaBattle.Services
         private Action<int, int> onPlayerGridClicked;
         private Action<int, int> onEnemyGridClicked;
 
+        /// <summary>
+        /// Конструктор менеджера игровых досок
+        /// </summary>
+        /// <param name="gameEngine">Игровой движок</param>
+        /// <param name="playerGrid">Сетка игрока</param>
+        /// <param name="enemyGrid">Сетка противника</param>
+        /// <param name="onPlayerGridClicked">Обработчик клика по сетке игрока</param>
+        /// <param name="onEnemyGridClicked">Обработчик клика по сетке противника</param>
         public GameBoardManager(GameEngine gameEngine, Grid playerGrid, Grid enemyGrid,
                               Action<int, int> onPlayerGridClicked, Action<int, int> onEnemyGridClicked)
         {
@@ -20,12 +31,20 @@ namespace SeaBattle.Services
             this.onEnemyGridClicked = onEnemyGridClicked;
         }
 
+        /// <summary>
+        /// Создание игровых досок
+        /// </summary>
         public void CreateGameBoards()
         {
             CreateGrid(playerGrid, true);
             CreateGrid(enemyGrid, false);
         }
 
+        /// <summary>
+        /// Создание игровой сетки
+        /// </summary>
+        /// <param name="grid">Сетка для создания</param>
+        /// <param name="isPlayerGrid">True если это сетка игрока, False если противника</param>
         private void CreateGrid(Grid grid, bool isPlayerGrid)
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -34,12 +53,14 @@ namespace SeaBattle.Services
                 grid.RowDefinitions.Clear();
                 grid.ColumnDefinitions.Clear();
 
+                // Создание 10x10 сетки
                 for (int i = 0; i < 10; i++)
                 {
                     grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                     grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 }
 
+                // Заполнение сетки кнопками
                 for (int x = 0; x < 10; x++)
                 {
                     for (int y = 0; y < 10; y++)
@@ -52,6 +73,7 @@ namespace SeaBattle.Services
                             CornerRadius = 0
                         };
 
+                        // Назначение обработчиков кликов в зависимости от типа сетки
                         if (isPlayerGrid)
                         {
                             int currentX = x;
@@ -75,6 +97,9 @@ namespace SeaBattle.Services
             });
         }
 
+        /// <summary>
+        /// Обновление отображения игровых досок
+        /// </summary>
         public void UpdateBoardDisplay()
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -84,6 +109,11 @@ namespace SeaBattle.Services
             });
         }
 
+        /// <summary>
+        /// Обновление отдельной игровой сетки
+        /// </summary>
+        /// <param name="grid">Сетка для обновления</param>
+        /// <param name="isPlayerGrid">True если это сетка игрока, False если противника</param>
         private void UpdateGrid(Grid grid, bool isPlayerGrid)
         {
             for (int x = 0; x < 10; x++)

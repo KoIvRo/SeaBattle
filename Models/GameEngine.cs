@@ -89,13 +89,17 @@ namespace SeaBattle.Models
         public event Action BoardUpdated;
         public event Action SpecialAttacksUpdated;
 
-        // Конструктор игрового движка
+        /// <summary>
+        /// Конструктор игрового движка
+        /// </summary>
         public GameEngine()
         {
             ResetGame();
         }
 
-        // Сброс игры к начальному состоянию
+        /// <summary>
+        /// Сброс игры к начальному состоянию
+        /// </summary>
         public void ResetGame()
         {
             // Инициализация пустых игровых досок
@@ -124,7 +128,9 @@ namespace SeaBattle.Models
             SpecialAttacksUpdated?.Invoke();
         }
 
-        // Инициализация массива кораблей
+        /// <summary>
+        /// Инициализация массива кораблей
+        /// </summary>
         private void InitializeShips()
         {
             ships = new Ship[]
@@ -135,13 +141,20 @@ namespace SeaBattle.Models
             };
         }
 
-        // Поворот текущего корабля
+        /// <summary>
+        /// Поворот текущего корабля
+        /// </summary>
         public void RotateShip()
         {
             isShipHorizontal = !isShipHorizontal;
         }
 
-        // Размещение корабля на поле игрока
+        /// <summary>
+        /// Размещение корабля на поле игрока
+        /// </summary>
+        /// <param name="x">Координата X</param>
+        /// <param name="y">Координата Y</param>
+        /// <returns>True если корабль успешно размещен, иначе False</returns>
         public bool PlaceShip(int x, int y)
         {
             // Проверка что есть корабли для размещения
@@ -178,8 +191,14 @@ namespace SeaBattle.Models
             return true;
         }
 
-        // Проверка возможности размещения корабля
-        // Проверка возможности размещения корабля с валидацией расстояния
+        /// <summary>
+        /// Проверка возможности размещения корабля с валидацией расстояния
+        /// </summary>
+        /// <param name="x">Координата X</param>
+        /// <param name="y">Координата Y</param>
+        /// <param name="shipType">Тип корабля</param>
+        /// <param name="isHorizontal">Ориентация корабля</param>
+        /// <returns>True если корабль можно разместить, иначе False</returns>
         private bool CanPlaceShip(int x, int y, ShipType shipType, bool isHorizontal)
         {
             int size = (int)shipType;
@@ -230,19 +249,28 @@ namespace SeaBattle.Models
             return true;
         }
 
-        // Проверка что все корабли размещены
+        /// <summary>
+        /// Проверка что все корабли размещены
+        /// </summary>
+        /// <returns>True если все корабли размещены, иначе False</returns>
         public bool AllShipsPlaced()
         {
             return ships.All(s => s.IsPlaced);
         }
 
-        // Установка флага готовности игрока
+        /// <summary>
+        /// Установка флага готовности игрока
+        /// </summary>
+        /// <param name="ready">Флаг готовности</param>
         public void SetPlayerReady(bool ready)
         {
             IsPlayerReady = ready;
         }
 
-        // Установка флага готовности противника
+        /// <summary>
+        /// Установка флага готовности противника
+        /// </summary>
+        /// <param name="ready">Флаг готовности</param>
         public void SetEnemyReady(bool ready)
         {
             IsEnemyReady = ready;
@@ -254,7 +282,9 @@ namespace SeaBattle.Models
             }
         }
 
-        // Начало игры
+        /// <summary>
+        /// Начало игры
+        /// </summary>
         public void StartGame()
         {
             CurrentState = GameState.PlayerTurn;
@@ -262,7 +292,10 @@ namespace SeaBattle.Models
             GameStateChanged?.Invoke(CurrentState);
         }
 
-        // Установка чей сейчас ход
+        /// <summary>
+        /// Установка чей сейчас ход
+        /// </summary>
+        /// <param name="playerTurn">True если ход игрока, False если ход противника</param>
         public void SetPlayerTurn(bool playerTurn)
         {
             IsPlayerTurn = playerTurn;
@@ -270,7 +303,12 @@ namespace SeaBattle.Models
             GameStateChanged?.Invoke(CurrentState);
         }
 
-        // Обработка выстрела противника по полю игрока
+        /// <summary>
+        /// Обработка выстрела противника по полю игрока
+        /// </summary>
+        /// <param name="x">Координата X</param>
+        /// <param name="y">Координата Y</param>
+        /// <returns>True если попадание, False если промах</returns>
         public bool ProcessEnemyShot(int x, int y)
         {
             // Проверка что по этой клетке еще не стреляли
@@ -294,7 +332,12 @@ namespace SeaBattle.Models
             return false;
         }
 
-        // Отметка результата нашего выстрела по полю противника
+        /// <summary>
+        /// Отметка результата нашего выстрела по полю противника
+        /// </summary>
+        /// <param name="x">Координата X</param>
+        /// <param name="y">Координата Y</param>
+        /// <param name="hit">True если попадание, False если промах</param>
         public void MarkShotResult(int x, int y, bool hit)
         {
             // Проверка что по этой клетке еще не стреляли
@@ -306,8 +349,12 @@ namespace SeaBattle.Models
             BoardUpdated?.Invoke();
         }
 
-        // Специальная атака - горизонтальная линия
-        // Теперь атакует ВСЕ клетки на горизонтальной линии
+        /// <summary>
+        /// Специальная атака - горизонтальная линия (атакует ВСЕ клетки на горизонтальной линии)
+        /// </summary>
+        /// <param name="startX">Координата X начальной точки</param>
+        /// <param name="startY">Координата Y начальной точки</param>
+        /// <returns>Массив результатов выстрелов (x, y, hit)</returns>
         public (int x, int y, bool hit)[] ExecuteLineHorizontalAttack(int startX, int startY)
         {
             if (!HasLineHorizontalAttack)
@@ -344,8 +391,12 @@ namespace SeaBattle.Models
             return shots.ToArray();
         }
 
-        // Специальная атака - вертикальная линия  
-        // Теперь атакует ВСЕ клетки на вертикальной линии
+        /// <summary>
+        /// Специальная атака - вертикальная линия (атакует ВСЕ клетки на вертикальной линии)
+        /// </summary>
+        /// <param name="startX">Координата X начальной точки</param>
+        /// <param name="startY">Координата Y начальной точки</param>
+        /// <returns>Массив результатов выстрелов (x, y, hit)</returns>
         public (int x, int y, bool hit)[] ExecuteLineVerticalAttack(int startX, int startY)
         {
             if (!HasLineVerticalAttack)
@@ -382,7 +433,12 @@ namespace SeaBattle.Models
             return shots.ToArray();
         }
 
-        // Специальная атака - область 3x3 (остается без изменений)
+        /// <summary>
+        /// Специальная атака - область 3x3
+        /// </summary>
+        /// <param name="centerX">Координата X центра области</param>
+        /// <param name="centerY">Координата Y центра области</param>
+        /// <returns>Массив результатов выстрелов (x, y, hit)</returns>
         public (int x, int y, bool hit)[] ExecuteArea3x3Attack(int centerX, int centerY)
         {
             if (!HasArea3x3Attack)
@@ -419,7 +475,10 @@ namespace SeaBattle.Models
             return shots.ToArray();
         }
 
-        // Выбор специальной атаки
+        /// <summary>
+        /// Выбор специальной атаки
+        /// </summary>
+        /// <param name="attack">Тип специальной атаки</param>
         public void SelectSpecialAttack(SpecialAttack attack)
         {
             // Можно выбирать атаку только во время хода игрока
@@ -430,7 +489,10 @@ namespace SeaBattle.Models
             SpecialAttacksUpdated?.Invoke();
         }
 
-        // Проверка условия победы (все корабли игрока потоплены)
+        /// <summary>
+        /// Проверка условия победы (все корабли игрока потоплены)
+        /// </summary>
+        /// <returns>True если все корабли игрока потоплены, иначе False</returns>
         public bool CheckWinCondition()
         {
             // Проверяем что на поле игрока не осталось непотопленных кораблей
