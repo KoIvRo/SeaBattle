@@ -8,10 +8,15 @@ namespace SeaBattle
     {
         private P2PServer p2pServer;
         private GameEngine gameEngine;
+        private GameBoardManager boardManager;
+        private NetworkMessageHandler messageHandler;
+        private SpecialAttackHandler attackHandler;
+
         private ObservableCollection<ServerInfo> availableServers = new ObservableCollection<ServerInfo>();
         private Dictionary<string, DateTime> serverLastSeen = new Dictionary<string, DateTime>();
+
+        public bool IsGameOver { get; private set; }
         private bool isServerMode = false;
-        private bool isGameOver = false;
 
         public MainPage()
         {
@@ -20,19 +25,85 @@ namespace SeaBattle
             p2pServer = new P2PServer("Player");
             gameEngine = new GameEngine();
 
+            boardManager = new GameBoardManager(gameEngine, PlayerGrid, EnemyGrid, OnPlayerGridClicked, OnEnemyGridClicked);
+
+            messageHandler = new NetworkMessageHandler(
+                gameEngine, p2pServer,
+                () => IsGameOver,
+                UpdateGameStatus,
+                EndGame,
+                CheckEnemyWinCondition,
+                ProcessEnemySpecialAttack
+            );
+
+            attackHandler = new SpecialAttackHandler(
+                gameEngine, p2pServer,
+                UpdateBoardDisplay,
+                UpdateSpecialAttacks,
+                EndGame,
+                CheckEnemyWinCondition,
+                UpdateGameStatus
+            );
+
             SetupEventHandlers();
             StartDiscovery();
-
             _ = ServerCleaner();
 
-            // Скрываем специальные атаки изначально
             SpecialAttacksStack.IsVisible = false;
+        }
+
+        public void UpdateGameStatus(string status)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                GameStatusLabel.Text = status;
+            });
+        }
+
+        public void UpdateBoardDisplay()
+        {
+            boardManager.UpdateBoardDisplay();
+        }
+
+        public bool CheckEnemyWinCondition()
+        {
+            int hitCount = 0;
+            for (int x = 0; x < 10; x++)
+            {
+                for (int y = 0; y < 10; y++)
+                {
+                    if (gameEngine.EnemyBoard[x, y] == CellState.Hit)
+                    {
+                        hitCount++;
+                    }
+                }
+            }
+            return hitCount >= 10;
+        }
+
+        public void EndGame(bool isWinner)
+        {
+            IsGameOver = true;
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                if (isWinner)
+                {
+                    await DisplayAlert("Game Over", "You won! All enemy ships are sunk.", "OK");
+                    GameStatusLabel.Text = "Game Over - You won!";
+                }
+                else
+                {
+                    await DisplayAlert("Game Over", "You lost! All your ships are sunk.", "OK");
+                    GameStatusLabel.Text = "Game Over - You lost!";
+                }
+                SpecialAttacksStack.IsVisible = false;
+            });
         }
 
         private void SetupEventHandlers()
         {
-            p2pServer.client.MessageReceived += OnMessageReceived;
-            p2pServer.server.MessageReceived += OnMessageReceived;
+            p2pServer.client.MessageReceived += messageHandler.OnMessageReceived;
+            p2pServer.server.MessageReceived += messageHandler.OnMessageReceived;
             p2pServer.server.ClientConnected += OnClientConnected;
             p2pServer.discovery.ServerFound += OnServerFound;
 
@@ -100,7 +171,7 @@ namespace SeaBattle
                 serverLastSeen.Clear();
                 availableServers.Clear();
                 p2pServer.connectedClientIp = "";
-                isGameOver = false;
+                IsGameOver = false;
 
                 StartServerBtn.IsEnabled = false;
                 StopServerBtn.IsEnabled = true;
@@ -123,7 +194,7 @@ namespace SeaBattle
                 p2pServer.discovery.Stop();
                 isServerMode = false;
                 p2pServer.connectedClientIp = "";
-                isGameOver = false;
+                IsGameOver = false;
 
                 StartServerBtn.IsEnabled = true;
                 StopServerBtn.IsEnabled = false;
@@ -151,7 +222,7 @@ namespace SeaBattle
                 }
 
                 p2pServer.connectedClientIp = "";
-                isGameOver = false;
+                IsGameOver = false;
 
                 if (isServerMode)
                 {
@@ -193,7 +264,7 @@ namespace SeaBattle
                     ReadyBtn.IsEnabled = true;
                     DisconnectBtn.IsEnabled = true;
                     RotateBtn.IsEnabled = true;
-                    isGameOver = false;
+                    IsGameOver = false;
                     InitializeGame();
                 }
                 else
@@ -241,396 +312,26 @@ namespace SeaBattle
                 ReadyBtn.IsEnabled = true;
                 DisconnectBtn.IsEnabled = true;
                 RotateBtn.IsEnabled = true;
-                isGameOver = false;
+                IsGameOver = false;
                 InitializeGame();
             });
         }
 
-        private async void OnMessageReceived(string ip, string message)
-        {
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                if (isGameOver) return;
-
-                // Обработка обычного выстрела от противника
-                if (message.StartsWith("SHOT:"))
-                {
-                    var parts = message.Split(':');
-                    if (parts.Length == 3 && int.TryParse(parts[1], out int x) && int.TryParse(parts[2], out int y))
-                    {
-                        bool hit = gameEngine.ProcessEnemyShot(x, y);
-                        await p2pServer.SendMessage($"RESULT:{x}:{y}:{(hit ? "HIT" : "MISS")}");
-
-                        if (!hit)
-                        {
-                            gameEngine.SetPlayerTurn(true);
-                            GameStatusLabel.Text = "Your turn - enemy missed!";
-                        }
-                        else
-                        {
-                            GameStatusLabel.Text = "Enemy hit your ship! Their turn continues...";
-
-                            if (gameEngine.CheckWinCondition())
-                            {
-                                isGameOver = true;
-                                await p2pServer.SendMessage("WIN");
-                                await DisplayAlert("Game Over", "You lost! All your ships are sunk.", "OK");
-                                GameStatusLabel.Text = "Game Over - You lost!";
-                            }
-                        }
-                    }
-                }
-                // Обработка результата нашего выстрела
-                else if (message.StartsWith("RESULT:"))
-                {
-                    var parts = message.Split(':');
-                    if (parts.Length == 4 && int.TryParse(parts[1], out int x) && int.TryParse(parts[2], out int y))
-                    {
-                        bool hit = parts[3] == "HIT";
-                        gameEngine.MarkShotResult(x, y, hit);
-
-                        if (!hit)
-                        {
-                            gameEngine.SetPlayerTurn(false);
-                            GameStatusLabel.Text = "You missed! Enemy's turn...";
-                        }
-                        else
-                        {
-                            GameStatusLabel.Text = "You hit enemy ship! Your turn continues...";
-
-                            if (CheckEnemyWinCondition())
-                            {
-                                isGameOver = true;
-                                await DisplayAlert("Game Over", "You won! All enemy ships are sunk.", "OK");
-                                GameStatusLabel.Text = "Game Over - You won!";
-                            }
-                        }
-                    }
-                }
-                // Противник готов к игре
-                else if (message == "READY")
-                {
-                    gameEngine.SetEnemyReady(true);
-                }
-                // Противник победил
-                else if (message == "WIN")
-                {
-                    isGameOver = true;
-                    await DisplayAlert("Game Over", "You lost! All your ships are sunk.", "OK");
-                    GameStatusLabel.Text = "Game Over - You lost!";
-                }
-                // Обработка специальных атак от противника
-                else if (message.StartsWith("SPECIAL:"))
-                {
-                    var parts = message.Split(':');
-                    if (parts.Length >= 4)
-                    {
-                        string attackType = parts[1];
-                        int startX = int.Parse(parts[2]);
-                        int startY = int.Parse(parts[3]);
-
-                        // Отображаем специальную атаку на нашей доске
-                        await ProcessEnemySpecialAttack(attackType, startX, startY);
-                    }
-                }
-                // Обработка результатов специальной атаки от противника
-                else if (message.StartsWith("SPECIAL_RESULT:"))
-                {
-                    var parts = message.Split(':');
-                    if (parts.Length >= 2)
-                    {
-                        bool hit = parts[1] == "HIT";
-
-                        if (!hit)
-                        {
-                            // ПРИ ПРОМАХЕ - передаем ход противнику
-                            gameEngine.SetPlayerTurn(false);
-                            GameStatusLabel.Text = "Your special attack missed! Enemy's turn!";
-                        }
-                        else
-                        {
-                            // После попадания специальной атакой - ход продолжается у текущего игрока
-                            GameStatusLabel.Text = "Your special attack hit! Your turn continues...";
-                            gameEngine.SetPlayerTurn(true);
-
-                            if (CheckEnemyWinCondition())
-                            {
-                                isGameOver = true;
-                                await DisplayAlert("Game Over", "You won! All enemy ships are sunk.", "OK");
-                                GameStatusLabel.Text = "Game Over - You won!";
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        private async Task ProcessEnemySpecialAttack(string attackType, int startX, int startY)
-        {
-            string attackName = attackType switch
-            {
-                "HorizontalLine" => "Horizontal Line",
-                "VerticalLine" => "Vertical Line",
-                "Area3x3" => "3x3 Area",
-                _ => "Special Attack"
-            };
-
-            // Обрабатываем специальную атаку на нашей доске
-            bool hitSomething = false;
-
-            switch (attackType)
-            {
-                case "HorizontalLine":
-                    hitSomething = ProcessHorizontalLineAttackOnPlayer(startX, startY);
-                    break;
-                case "VerticalLine":
-                    hitSomething = ProcessVerticalLineAttackOnPlayer(startX, startY);
-                    break;
-                case "Area3x3":
-                    hitSomething = ProcessArea3x3AttackOnPlayer(startX, startY);
-                    break;
-            }
-
-            // Отправляем результат специальной атаки
-            await p2pServer.SendMessage($"SPECIAL_RESULT:{(hitSomething ? "HIT" : "MISS")}");
-
-            // Обновляем доску чтобы показать атаку
-            UpdateBoardDisplay();
-
-            if (!hitSomething)
-            {
-                // ПРИ ПРОМАХЕ - передаем ход игроку
-                gameEngine.SetPlayerTurn(true);
-                GameStatusLabel.Text = $"Enemy used {attackName} attack and missed! Your turn!";
-            }
-            else
-            {
-                GameStatusLabel.Text = $"Enemy used {attackName} attack and hit! Their turn continues...";
-
-                if (gameEngine.CheckWinCondition())
-                {
-                    isGameOver = true;
-                    await p2pServer.SendMessage("WIN");
-                    await DisplayAlert("Game Over", "You lost! All your ships are sunk.", "OK");
-                    GameStatusLabel.Text = "Game Over - You lost!";
-                }
-            }
-        }
-
-        // Обработка горизонтальной атаки на игроке
-        private bool ProcessHorizontalLineAttackOnPlayer(int startX, int startY)
-        {
-            bool hitSomething = false;
-
-            // Влево от стартовой точки
-            for (int x = startX; x >= 0; x--)
-            {
-                // Пропускаем уже отмеченные клетки (продолжаем движение)
-                if (gameEngine.PlayerBoard[x, startY] == CellState.Hit || gameEngine.PlayerBoard[x, startY] == CellState.Miss)
-                    continue;
-
-                if (gameEngine.PlayerBoard[x, startY] == CellState.Ship)
-                {
-                    gameEngine.PlayerBoard[x, startY] = CellState.Hit;
-                    hitSomething = true;
-                    break; // Останавливаемся после первого попадания
-                }
-                else if (gameEngine.PlayerBoard[x, startY] == CellState.Empty)
-                {
-                    gameEngine.PlayerBoard[x, startY] = CellState.Miss;
-                }
-            }
-
-            // Вправо от стартовой точки (только если не было попадания в левой части)
-            if (!hitSomething)
-            {
-                for (int x = startX + 1; x < 10; x++)
-                {
-                    // Пропускаем уже отмеченные клетки (продолжаем движение)
-                    if (gameEngine.PlayerBoard[x, startY] == CellState.Hit || gameEngine.PlayerBoard[x, startY] == CellState.Miss)
-                        continue;
-
-                    if (gameEngine.PlayerBoard[x, startY] == CellState.Ship)
-                    {
-                        gameEngine.PlayerBoard[x, startY] = CellState.Hit;
-                        hitSomething = true;
-                        break; // Останавливаемся после первого попадания
-                    }
-                    else if (gameEngine.PlayerBoard[x, startY] == CellState.Empty)
-                    {
-                        gameEngine.PlayerBoard[x, startY] = CellState.Miss;
-                    }
-                }
-            }
-
-            return hitSomething;
-        }
-
-        // Обработка вертикальной атаки на игроке
-        private bool ProcessVerticalLineAttackOnPlayer(int startX, int startY)
-        {
-            bool hitSomething = false;
-
-            // Вверх от стартовой точки
-            for (int y = startY; y >= 0; y--)
-            {
-                // Пропускаем уже отмеченные клетки (продолжаем движение)
-                if (gameEngine.PlayerBoard[startX, y] == CellState.Hit || gameEngine.PlayerBoard[startX, y] == CellState.Miss)
-                    continue;
-
-                if (gameEngine.PlayerBoard[startX, y] == CellState.Ship)
-                {
-                    gameEngine.PlayerBoard[startX, y] = CellState.Hit;
-                    hitSomething = true;
-                    break; // Останавливаемся после первого попадания
-                }
-                else if (gameEngine.PlayerBoard[startX, y] == CellState.Empty)
-                {
-                    gameEngine.PlayerBoard[startX, y] = CellState.Miss;
-                }
-            }
-
-            // Вниз от стартовой точки (только если не было попадания в верхней части)
-            if (!hitSomething)
-            {
-                for (int y = startY + 1; y < 10; y++)
-                {
-                    // Пропускаем уже отмеченные клетки (продолжаем движение)
-                    if (gameEngine.PlayerBoard[startX, y] == CellState.Hit || gameEngine.PlayerBoard[startX, y] == CellState.Miss)
-                        continue;
-
-                    if (gameEngine.PlayerBoard[startX, y] == CellState.Ship)
-                    {
-                        gameEngine.PlayerBoard[startX, y] = CellState.Hit;
-                        hitSomething = true;
-                        break; // Останавливаемся после первого попадания
-                    }
-                    else if (gameEngine.PlayerBoard[startX, y] == CellState.Empty)
-                    {
-                        gameEngine.PlayerBoard[startX, y] = CellState.Miss;
-                    }
-                }
-            }
-
-            return hitSomething;
-        }
-
-        // Обработка атаки области 3x3 на игроке
-        private bool ProcessArea3x3AttackOnPlayer(int centerX, int centerY)
-        {
-            bool hitSomething = false;
-
-            for (int x = Math.Max(0, centerX - 1); x <= Math.Min(9, centerX + 1); x++)
-            {
-                for (int y = Math.Max(0, centerY - 1); y <= Math.Min(9, centerY + 1); y++)
-                {
-                    // Пропускаем уже отмеченные клетки
-                    if (gameEngine.PlayerBoard[x, y] == CellState.Hit || gameEngine.PlayerBoard[x, y] == CellState.Miss)
-                        continue;
-
-                    if (gameEngine.PlayerBoard[x, y] == CellState.Ship)
-                    {
-                        gameEngine.PlayerBoard[x, y] = CellState.Hit;
-                        hitSomething = true;
-                    }
-                    else if (gameEngine.PlayerBoard[x, y] == CellState.Empty)
-                    {
-                        gameEngine.PlayerBoard[x, y] = CellState.Miss;
-                    }
-                }
-            }
-
-            return hitSomething;
-        }
-
-        // Проверка условия победы над противником
-        private bool CheckEnemyWinCondition()
-        {
-            int hitCount = 0;
-            for (int x = 0; x < 10; x++)
-            {
-                for (int y = 0; y < 10; y++)
-                {
-                    if (gameEngine.EnemyBoard[x, y] == CellState.Hit)
-                    {
-                        hitCount++;
-                    }
-                }
-            }
-            return hitCount >= 10;
-        }
-
-        // Инициализация новой игры
         private void InitializeGame()
         {
             gameEngine.ResetGame();
-            CreateGameBoards();
+            boardManager.CreateGameBoards();
             UpdateShipsProgress();
             UpdateSpecialAttacks();
             GameStatusLabel.Text = "Click on YOUR board to place ships. Use Rotate to change direction.";
             RotateBtn.IsEnabled = true;
-            isGameOver = false;
+            IsGameOver = false;
             SpecialAttacksStack.IsVisible = false;
         }
 
-        // Создание игровых досок
-        private void CreateGameBoards()
-        {
-            CreateGrid(PlayerGrid, true);
-            CreateGrid(EnemyGrid, false);
-        }
-
-        // Создание сетки для игровой доски
-        private void CreateGrid(Grid grid, bool isPlayerGrid)
-        {
-            grid.Children.Clear();
-            grid.RowDefinitions.Clear();
-            grid.ColumnDefinitions.Clear();
-
-            for (int i = 0; i < 10; i++)
-            {
-                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            }
-
-            for (int x = 0; x < 10; x++)
-            {
-                for (int y = 0; y < 10; y++)
-                {
-                    var button = new Button
-                    {
-                        BackgroundColor = Colors.LightBlue,
-                        BorderColor = Colors.Black,
-                        BorderWidth = 1,
-                        CornerRadius = 0
-                    };
-
-                    if (isPlayerGrid)
-                    {
-                        int currentX = x;
-                        int currentY = y;
-                        button.Clicked += (s, e) => OnPlayerGridClicked(currentX, currentY);
-                    }
-                    else
-                    {
-                        int currentX = x;
-                        int currentY = y;
-                        button.Clicked += (s, e) => OnEnemyGridClicked(currentX, currentY);
-                    }
-
-                    grid.Children.Add(button);
-                    Grid.SetRow(button, y);
-                    Grid.SetColumn(button, x);
-                }
-            }
-
-            UpdateBoardDisplay();
-        }
-
-        // Обработка клика по своей доске (размещение кораблей)
         private void OnPlayerGridClicked(int x, int y)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
 
             if (gameEngine.CurrentState == GameState.ShipPlacement)
             {
@@ -653,114 +354,52 @@ namespace SeaBattle
                 else
                 {
                     DisplayAlert("Cannot Place Ship",
-                        $"Cannot place {gameEngine.CurrentShipSize}-cell ship at position {x},{y}. Try another location.",
+                        $"Cannot place {gameEngine.CurrentShipSize}-cell ship at position {x},{y}. " +
+                        "Ships cannot be placed next to each other or outside the board.",
                         "OK");
                 }
             }
         }
 
-        // Обработка клика по доске противника (атака)
         private async void OnEnemyGridClicked(int x, int y)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
 
             if (gameEngine.CurrentState == GameState.PlayerTurn && gameEngine.IsPlayerTurn)
             {
-                // Проверяем, используется ли специальная атака
                 if (gameEngine.SelectedSpecialAttack != SpecialAttack.None)
                 {
-                    await ExecuteSpecialAttack(x, y);
+                    await attackHandler.ExecuteSpecialAttack(x, y);
                 }
                 else if (gameEngine.EnemyBoard[x, y] == CellState.Empty)
                 {
-                    // Обычный выстрел
                     await p2pServer.SendMessage($"SHOT:{x}:{y}");
-                    GameStatusLabel.Text = "Waiting for shot result...";
+                    GameStatusLabel.Text = "You won";
                 }
             }
         }
 
-        // Выполнение специальной атаки
-        private async Task ExecuteSpecialAttack(int x, int y)
-        {
-            (int x, int y, bool hit)[] shots = Array.Empty<(int, int, bool)>();
-            string attackName = "";
-            string attackType = "";
-
-            switch (gameEngine.SelectedSpecialAttack)
-            {
-                case SpecialAttack.LineHorizontal:
-                    shots = gameEngine.ExecuteLineHorizontalAttack(x, y);
-                    attackName = "Horizontal Line";
-                    attackType = "HorizontalLine";
-                    break;
-                case SpecialAttack.LineVertical:
-                    shots = gameEngine.ExecuteLineVerticalAttack(x, y);
-                    attackName = "Vertical Line";
-                    attackType = "VerticalLine";
-                    break;
-                case SpecialAttack.Area3x3:
-                    shots = gameEngine.ExecuteArea3x3Attack(x, y);
-                    attackName = "3x3 Area";
-                    attackType = "Area3x3";
-                    break;
-            }
-
-            // Отправляем информацию о специальной атаке противнику
-            await p2pServer.SendMessage($"SPECIAL:{attackType}:{x}:{y}");
-
-            // СРАЗУ обновляем доску чтобы показать куда попали
-            UpdateBoardDisplay();
-            UpdateSpecialAttacks();
-
-            // Обрабатываем результаты выстрелов
-            bool hitSomething = shots.Any(shot => shot.hit);
-            int hitCount = shots.Count(shot => shot.hit);
-
-            if (hitCount > 0)
-            {
-                GameStatusLabel.Text = $"{attackName} attack hit {hitCount} time(s)! Your turn continues...";
-                gameEngine.SetPlayerTurn(true);
-
-                // Проверяем победу после атаки
-                if (CheckEnemyWinCondition())
-                {
-                    isGameOver = true;
-                    await DisplayAlert("Game Over", "You won! All enemy ships are sunk.", "OK");
-                    GameStatusLabel.Text = "Game Over - You won!";
-                    return;
-                }
-            }
-            else
-            {
-                GameStatusLabel.Text = $"{attackName} attack missed! Enemy's turn...";
-                gameEngine.SetPlayerTurn(false);
-            }
-        }
-
-        // Обработчики специальных атак
         private void OnLineHorizontalClicked(object sender, EventArgs e)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
             gameEngine.SelectSpecialAttack(SpecialAttack.LineHorizontal);
             SpecialAttackStatusLabel.Text = "Horizontal Line selected - click on enemy board";
         }
 
         private void OnLineVerticalClicked(object sender, EventArgs e)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
             gameEngine.SelectSpecialAttack(SpecialAttack.LineVertical);
             SpecialAttackStatusLabel.Text = "Vertical Line selected - click on enemy board";
         }
 
         private void OnArea3x3Clicked(object sender, EventArgs e)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
             gameEngine.SelectSpecialAttack(SpecialAttack.Area3x3);
             SpecialAttackStatusLabel.Text = "3x3 Area selected - click on enemy board";
         }
 
-        // Обновление прогресса расстановки кораблей
         private void UpdateShipsProgress()
         {
             ShipsProgressLabel.Text = $"Ships: {gameEngine.PlacedShipsCount}/{gameEngine.TotalShipsCount} " +
@@ -768,47 +407,44 @@ namespace SeaBattle
                                     $"{(gameEngine.IsShipHorizontal ? "Horizontal" : "Vertical")})";
         }
 
-        // Обновление состояния специальных атак
-        private void UpdateSpecialAttacks()
+        public void UpdateSpecialAttacks()
         {
-            LineHorizontalBtn.IsEnabled = gameEngine.HasLineHorizontalAttack;
-            LineVerticalBtn.IsEnabled = gameEngine.HasLineVerticalAttack;
-            Area3x3Btn.IsEnabled = gameEngine.HasArea3x3Attack;
-
-            LineHorizontalBtn.BackgroundColor = gameEngine.HasLineHorizontalAttack ? Colors.LightGreen : Colors.LightGray;
-            LineVerticalBtn.BackgroundColor = gameEngine.HasLineVerticalAttack ? Colors.LightBlue : Colors.LightGray;
-            Area3x3Btn.BackgroundColor = gameEngine.HasArea3x3Attack ? Colors.LightCoral : Colors.LightGray;
-
-            if (gameEngine.SelectedSpecialAttack != SpecialAttack.None)
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                SpecialAttackStatusLabel.Text = $"{gameEngine.SelectedSpecialAttack} selected - click on enemy board";
-            }
-            else
-            {
-                SpecialAttackStatusLabel.Text = "Select special attack and click on enemy board";
-            }
+                LineHorizontalBtn.IsEnabled = gameEngine.HasLineHorizontalAttack;
+                LineVerticalBtn.IsEnabled = gameEngine.HasLineVerticalAttack;
+                Area3x3Btn.IsEnabled = gameEngine.HasArea3x3Attack;
+
+                LineHorizontalBtn.BackgroundColor = gameEngine.HasLineHorizontalAttack ? Colors.LightGreen : Colors.LightGray;
+                LineVerticalBtn.BackgroundColor = gameEngine.HasLineVerticalAttack ? Colors.LightBlue : Colors.LightGray;
+                Area3x3Btn.BackgroundColor = gameEngine.HasArea3x3Attack ? Colors.LightCoral : Colors.LightGray;
+
+                if (gameEngine.SelectedSpecialAttack != SpecialAttack.None)
+                {
+                    SpecialAttackStatusLabel.Text = $"{gameEngine.SelectedSpecialAttack} selected - click on enemy board";
+                }
+                else
+                {
+                    SpecialAttackStatusLabel.Text = "Select special attack and click on enemy board";
+                }
+            });
         }
 
         private void OnSpecialAttacksUpdated()
         {
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                UpdateSpecialAttacks();
-            });
+            UpdateSpecialAttacks();
         }
 
-        // Поворот корабля при расстановке
         private void OnRotateClicked(object sender, EventArgs e)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
             gameEngine.RotateShip();
             UpdateShipsProgress();
         }
 
-        // Подготовка к игре (готовность игрока)
         private async void OnReadyClicked(object sender, EventArgs e)
         {
-            if (isGameOver) return;
+            if (IsGameOver) return;
 
             if (gameEngine.CurrentState == GameState.ShipPlacement && gameEngine.AllShipsPlaced())
             {
@@ -830,12 +466,11 @@ namespace SeaBattle
             }
         }
 
-        // Обработка изменения состояния игры
         private void OnGameStateChanged(GameState newState)
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                if (isGameOver) return;
+                if (IsGameOver) return;
 
                 switch (newState)
                 {
@@ -867,40 +502,9 @@ namespace SeaBattle
             UpdateBoardDisplay();
         }
 
-        // Обновление отображения игровых досок
-        private void UpdateBoardDisplay()
+        public async Task ProcessEnemySpecialAttack(string attackType, int startX, int startY)
         {
-            UpdateGrid(PlayerGrid, true);
-            UpdateGrid(EnemyGrid, false);
-        }
-
-        // Обновление сетки игровой доски
-        private void UpdateGrid(Grid grid, bool isPlayerGrid)
-        {
-            for (int x = 0; x < 10; x++)
-            {
-                for (int y = 0; y < 10; y++)
-                {
-                    var button = grid.Children
-                        .OfType<Button>()
-                        .FirstOrDefault(b => Grid.GetRow(b) == y && Grid.GetColumn(b) == x);
-
-                    if (button != null)
-                    {
-                        var cell = isPlayerGrid ?
-                            gameEngine.PlayerBoard[x, y] :
-                            gameEngine.EnemyBoard[x, y];
-
-                        button.BackgroundColor = cell switch
-                        {
-                            CellState.Ship => Colors.Gray,
-                            CellState.Hit => Colors.Red,
-                            CellState.Miss => Colors.White,
-                            _ => Colors.LightBlue
-                        };
-                    }
-                }
-            }
+            await attackHandler.ProcessEnemySpecialAttack(attackType, startX, startY);
         }
     }
 }

@@ -179,6 +179,7 @@ namespace SeaBattle.Models
         }
 
         // Проверка возможности размещения корабля
+        // Проверка возможности размещения корабля с валидацией расстояния
         private bool CanPlaceShip(int x, int y, ShipType shipType, bool isHorizontal)
         {
             int size = (int)shipType;
@@ -193,14 +194,37 @@ namespace SeaBattle.Models
                 if (y + size > 10) return false;
             }
 
-            // Проверка что все клетки под корабль свободны
+            // Проверка что все клетки под корабль свободны и вокруг них нет других кораблей
             for (int i = 0; i < size; i++)
             {
                 int checkX = isHorizontal ? x + i : x;
                 int checkY = isHorizontal ? y : y + i;
 
-                if (checkX >= 10 || checkY >= 10 || PlayerBoard[checkX, checkY] != CellState.Empty)
+                // Проверка выхода за границы
+                if (checkX >= 10 || checkY >= 10)
                     return false;
+
+                // Проверка что клетка свободна
+                if (PlayerBoard[checkX, checkY] != CellState.Empty)
+                    return false;
+
+                // Проверка области вокруг клетки (включая диагонали)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        int aroundX = checkX + dx;
+                        int aroundY = checkY + dy;
+
+                        // Проверяем только клетки внутри поля
+                        if (aroundX >= 0 && aroundX < 10 && aroundY >= 0 && aroundY < 10)
+                        {
+                            // Если рядом уже есть корабль - нельзя ставить
+                            if (PlayerBoard[aroundX, aroundY] == CellState.Ship)
+                                return false;
+                        }
+                    }
+                }
             }
 
             return true;
@@ -283,168 +307,90 @@ namespace SeaBattle.Models
         }
 
         // Специальная атака - горизонтальная линия
-        // Атака проходит по всей горизонтальной линии от стартовой точки
-        // Останавливается после первого попадания по кораблю
+        // Теперь атакует ВСЕ клетки на горизонтальной линии
         public (int x, int y, bool hit)[] ExecuteLineHorizontalAttack(int startX, int startY)
         {
-            // Проверка доступности атаки
             if (!HasLineHorizontalAttack)
                 return Array.Empty<(int, int, bool)>();
 
             var shots = new System.Collections.Generic.List<(int x, int y, bool hit)>();
-            bool hitDetected = false;
 
-            // Бьем по всей горизонтали в обе стороны от стартовой точки
-            // Влево от стартовой точки
-            for (int x = startX; x >= 0; x--)
+            // Атакуем ВСЮ горизонтальную линию
+            for (int x = 0; x < 10; x++)
             {
-                // Пропускаем уже отмеченные клетки (продолжаем движение)
+                // Пропускаем уже отмеченные клетки
                 if (EnemyBoard[x, startY] == CellState.Hit || EnemyBoard[x, startY] == CellState.Miss)
                     continue;
 
-                // Проверка клетки на наличие корабля
-                if (EnemyBoard[x, startY] == CellState.Empty)
-                {
-                    // Отметка промаха
-                    EnemyBoard[x, startY] = CellState.Miss;
-                    shots.Add((x, startY, false));
-                }
-                else if (EnemyBoard[x, startY] == CellState.Ship)
+                // Проверяем клетку на наличие корабля
+                if (EnemyBoard[x, startY] == CellState.Ship)
                 {
                     // Попадание по кораблю
                     EnemyBoard[x, startY] = CellState.Hit;
                     shots.Add((x, startY, true));
-                    hitDetected = true;
-                    break; // Останавливаемся после первого попадания
                 }
-            }
-
-            // Вправо от стартовой точки (начиная со следующей клетки)
-            // Только если не было попадания в левой части
-            if (!hitDetected)
-            {
-                for (int x = startX + 1; x < 10; x++)
+                else if (EnemyBoard[x, startY] == CellState.Empty)
                 {
-                    // Пропускаем уже отмеченные клетки (продолжаем движение)
-                    if (EnemyBoard[x, startY] == CellState.Hit || EnemyBoard[x, startY] == CellState.Miss)
-                        continue;
-
-                    // Проверка клетки на наличие корабля
-                    if (EnemyBoard[x, startY] == CellState.Empty)
-                    {
-                        // Отметка промаха
-                        EnemyBoard[x, startY] = CellState.Miss;
-                        shots.Add((x, startY, false));
-                    }
-                    else if (EnemyBoard[x, startY] == CellState.Ship)
-                    {
-                        // Попадание по кораблю
-                        EnemyBoard[x, startY] = CellState.Hit;
-                        shots.Add((x, startY, true));
-                        hitDetected = true;
-                        break; // Останавливаемся после первого попадания
-                    }
+                    // Промах
+                    EnemyBoard[x, startY] = CellState.Miss;
+                    shots.Add((x, startY, false));
                 }
             }
 
-            // Делаем атаку недоступной после использования
             HasLineHorizontalAttack = false;
             SelectedSpecialAttack = SpecialAttack.None;
-
-            // Уведомление об изменениях
             BoardUpdated?.Invoke();
             SpecialAttacksUpdated?.Invoke();
             return shots.ToArray();
         }
 
-        // Специальная атака - вертикальная линия
-        // Атака проходит по всей вертикальной линии от стартовой точки
-        // Останавливается после первого попадания по кораблю
+        // Специальная атака - вертикальная линия  
+        // Теперь атакует ВСЕ клетки на вертикальной линии
         public (int x, int y, bool hit)[] ExecuteLineVerticalAttack(int startX, int startY)
         {
-            // Проверка доступности атаки
             if (!HasLineVerticalAttack)
                 return Array.Empty<(int, int, bool)>();
 
             var shots = new System.Collections.Generic.List<(int x, int y, bool hit)>();
-            bool hitDetected = false;
 
-            // Бьем по всей вертикали в обе стороны от стартовой точки
-            // Вверх от стартовой точки
-            for (int y = startY; y >= 0; y--)
+            // Атакуем ВЕСЬ вертикальный столбец
+            for (int y = 0; y < 10; y++)
             {
-                // Пропускаем уже отмеченные клетки (продолжаем движение)
+                // Пропускаем уже отмеченные клетки
                 if (EnemyBoard[startX, y] == CellState.Hit || EnemyBoard[startX, y] == CellState.Miss)
                     continue;
 
-                // Проверка клетки на наличие корабля
-                if (EnemyBoard[startX, y] == CellState.Empty)
-                {
-                    // Отметка промаха
-                    EnemyBoard[startX, y] = CellState.Miss;
-                    shots.Add((startX, y, false));
-                }
-                else if (EnemyBoard[startX, y] == CellState.Ship)
+                // Проверяем клетку на наличие корабля
+                if (EnemyBoard[startX, y] == CellState.Ship)
                 {
                     // Попадание по кораблю
                     EnemyBoard[startX, y] = CellState.Hit;
                     shots.Add((startX, y, true));
-                    hitDetected = true;
-                    break; // Останавливаемся после первого попадания
                 }
-            }
-
-            // Вниз от стартовой точки (начиная со следующей клетки)
-            // Только если не было попадания в верхней части
-            if (!hitDetected)
-            {
-                for (int y = startY + 1; y < 10; y++)
+                else if (EnemyBoard[startX, y] == CellState.Empty)
                 {
-                    // Пропускаем уже отмеченные клетки (продолжаем движение)
-                    if (EnemyBoard[startX, y] == CellState.Hit || EnemyBoard[startX, y] == CellState.Miss)
-                        continue;
-
-                    // Проверка клетки на наличие корабля
-                    if (EnemyBoard[startX, y] == CellState.Empty)
-                    {
-                        // Отметка промаха
-                        EnemyBoard[startX, y] = CellState.Miss;
-                        shots.Add((startX, y, false));
-                    }
-                    else if (EnemyBoard[startX, y] == CellState.Ship)
-                    {
-                        // Попадание по кораблю
-                        EnemyBoard[startX, y] = CellState.Hit;
-                        shots.Add((startX, y, true));
-                        hitDetected = true;
-                        break; // Останавливаемся после первого попадания
-                    }
+                    // Промах
+                    EnemyBoard[startX, y] = CellState.Miss;
+                    shots.Add((startX, y, false));
                 }
             }
 
-            // Делаем атаку недоступной после использования
             HasLineVerticalAttack = false;
             SelectedSpecialAttack = SpecialAttack.None;
-
-            // Уведомление об изменениях
             BoardUpdated?.Invoke();
             SpecialAttacksUpdated?.Invoke();
             return shots.ToArray();
         }
 
-        // Специальная атака - область 3x3
-        // Атака проходит по всем клеткам в области 3x3 вокруг стартовой точки
-        // Не останавливается после попаданий - обрабатывает все клетки
+        // Специальная атака - область 3x3 (остается без изменений)
         public (int x, int y, bool hit)[] ExecuteArea3x3Attack(int centerX, int centerY)
         {
-            // Проверка доступности атаки
             if (!HasArea3x3Attack)
                 return Array.Empty<(int, int, bool)>();
 
             var shots = new System.Collections.Generic.List<(int x, int y, bool hit)>();
 
             // Бьем по области 3x3 вокруг указанной точки
-            // Ограничиваем область границами поля
             for (int x = Math.Max(0, centerX - 1); x <= Math.Min(9, centerX + 1); x++)
             {
                 for (int y = Math.Max(0, centerY - 1); y <= Math.Min(9, centerY + 1); y++)
@@ -453,27 +399,21 @@ namespace SeaBattle.Models
                     if (EnemyBoard[x, y] == CellState.Hit || EnemyBoard[x, y] == CellState.Miss)
                         continue;
 
-                    // Проверка клетки на наличие корабля
                     if (EnemyBoard[x, y] == CellState.Empty)
                     {
-                        // Отметка промаха
                         EnemyBoard[x, y] = CellState.Miss;
                         shots.Add((x, y, false));
                     }
                     else if (EnemyBoard[x, y] == CellState.Ship)
                     {
-                        // Попадание по кораблю
                         EnemyBoard[x, y] = CellState.Hit;
                         shots.Add((x, y, true));
                     }
                 }
             }
 
-            // Делаем атаку недоступной после использования
             HasArea3x3Attack = false;
             SelectedSpecialAttack = SpecialAttack.None;
-
-            // Уведомление об изменениях
             BoardUpdated?.Invoke();
             SpecialAttacksUpdated?.Invoke();
             return shots.ToArray();
