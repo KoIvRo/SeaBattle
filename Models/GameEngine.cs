@@ -179,6 +179,7 @@ namespace SeaBattle.Models
         }
 
         // Проверка возможности размещения корабля
+        // Проверка возможности размещения корабля с валидацией расстояния
         private bool CanPlaceShip(int x, int y, ShipType shipType, bool isHorizontal)
         {
             int size = (int)shipType;
@@ -193,14 +194,37 @@ namespace SeaBattle.Models
                 if (y + size > 10) return false;
             }
 
-            // Проверка что все клетки под корабль свободны
+            // Проверка что все клетки под корабль свободны и вокруг них нет других кораблей
             for (int i = 0; i < size; i++)
             {
                 int checkX = isHorizontal ? x + i : x;
                 int checkY = isHorizontal ? y : y + i;
 
-                if (checkX >= 10 || checkY >= 10 || PlayerBoard[checkX, checkY] != CellState.Empty)
+                // Проверка выхода за границы
+                if (checkX >= 10 || checkY >= 10)
                     return false;
+
+                // Проверка что клетка свободна
+                if (PlayerBoard[checkX, checkY] != CellState.Empty)
+                    return false;
+
+                // Проверка области вокруг клетки (включая диагонали)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        int aroundX = checkX + dx;
+                        int aroundY = checkY + dy;
+
+                        // Проверяем только клетки внутри поля
+                        if (aroundX >= 0 && aroundX < 10 && aroundY >= 0 && aroundY < 10)
+                        {
+                            // Если рядом уже есть корабль - нельзя ставить
+                            if (PlayerBoard[aroundX, aroundY] == CellState.Ship)
+                                return false;
+                        }
+                    }
+                }
             }
 
             return true;

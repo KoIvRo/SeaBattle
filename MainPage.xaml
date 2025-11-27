@@ -1,93 +1,287 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage x:Class="SeaBattle.MainPage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Sea Battle"
+             BackgroundColor="#2d3748">
 
     <ScrollView>
-        <VerticalStackLayout Spacing="15" Padding="30,0">
+        <VerticalStackLayout Spacing="20" Padding="20,10" BackgroundColor="#2d3748">
 
-            <HorizontalStackLayout Spacing="10">
-                <Button x:Name="StartServerBtn" 
-                        Text="Start Server" 
-                        Clicked="OnStartServerClicked"/>
-                <Button x:Name="StopServerBtn" 
-                        Text="Stop Server" 
-                        Clicked="OnStopServerClicked"
-                        IsEnabled="False"/>
-            </HorizontalStackLayout>
-
-            <Label x:Name="StatusLabel" 
-                   Text="Not connected" 
-                   FontSize="16" 
-                   HorizontalOptions="Center"/>
-
-            <Label Text="Available Servers:" FontSize="14" FontAttributes="Bold"/>
-            <ListView x:Name="ServersListView" 
-                      HeightRequest="120"
-                      ItemSelected="OnServerSelected">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <TextCell Text="{Binding Name}" Detail="{Binding IP}"/>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-
-            <VerticalStackLayout Spacing="5">
-                <HorizontalStackLayout Spacing="10">
-                    <Button x:Name="RotateBtn" 
-                            Text="Rotate Ship" 
-                            Clicked="OnRotateClicked"/>
+            <!-- Header -->
+            <Frame BackgroundColor="#1a202c" CornerRadius="15" Padding="15" HasShadow="True">
+                <HorizontalStackLayout Spacing="15" HorizontalOptions="Center">
+                    <Image Source="ship_icon.png" HeightRequest="30" WidthRequest="30" 
+                           VerticalOptions="Center"/>
+                    <Label Text="Sea Battle" 
+                           TextColor="White" 
+                           FontSize="24" 
+                           FontAttributes="Bold"
+                           VerticalOptions="Center"/>
                 </HorizontalStackLayout>
-                <Label x:Name="ShipsProgressLabel"
-                       Text="Ships: 0/3"
-                       FontSize="12"
-                       HorizontalOptions="Center"/>
-            </VerticalStackLayout>
+            </Frame>
 
-            <VerticalStackLayout Spacing="5" IsVisible="{Binding Source={x:Reference SpecialAttacksStack}, Path=IsVisible}">
-                <Label Text="Special Attacks (One use per game):" FontSize="14" FontAttributes="Bold"/>
-                <StackLayout x:Name="SpecialAttacksStack" Orientation="Horizontal" HorizontalOptions="Center" Spacing="10">
-                    <Button x:Name="LineHorizontalBtn" 
-                            Text="Horizontal Line" 
-                            Clicked="OnLineHorizontalClicked"
-                            BackgroundColor="LightGreen"/>
-                    <Button x:Name="LineVerticalBtn" 
-                            Text="Vertical Line" 
-                            Clicked="OnLineVerticalClicked"
-                            BackgroundColor="LightBlue"/>
-                    <Button x:Name="Area3x3Btn" 
-                            Text="3x3 Area" 
-                            Clicked="OnArea3x3Clicked"
-                            BackgroundColor="LightCoral"/>
-                </StackLayout>
-                <Label x:Name="SpecialAttackStatusLabel"
-                       Text="Select special attack and click on enemy board"
-                       FontSize="12"
-                       HorizontalOptions="Center"/>
-            </VerticalStackLayout>
+            <!-- Server Controls -->
+            <Frame BackgroundColor="#4a5568" CornerRadius="12" Padding="15" HasShadow="True">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="SERVER CONTROLS" 
+                           FontSize="12" 
+                           FontAttributes="Bold" 
+                           TextColor="#e2e8f0"
+                           HorizontalOptions="Center"/>
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
-                <Label Grid.Row="0" Grid.Column="0" Text="Your Board" FontSize="14" FontAttributes="Bold"/>
-                <Label Grid.Row="0" Grid.Column="1" Text="Enemy Board" FontSize="14" FontAttributes="Bold"/>
+                    <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                        <Button x:Name="StartServerBtn" 
+                                Text="🚀 Start Server" 
+                                Clicked="OnStartServerClicked"
+                                BackgroundColor="#22c55e"
+                                TextColor="White"
+                                CornerRadius="8"
+                                FontSize="14"
+                                FontAttributes="Bold"
+                                Padding="20,12"/>
+                        <Button x:Name="StopServerBtn" 
+                                Text="🛑 Stop Server" 
+                                Clicked="OnStopServerClicked"
+                                IsEnabled="False"
+                                BackgroundColor="#ef4444"
+                                TextColor="White"
+                                CornerRadius="8"
+                                FontSize="14"
+                                FontAttributes="Bold"
+                                Padding="20,12"/>
+                    </HorizontalStackLayout>
 
-                <Grid x:Name="PlayerGrid" Grid.Row="1" Grid.Column="0" 
-                      HorizontalOptions="Center" Padding="5"/>
-                <Grid x:Name="EnemyGrid" Grid.Row="1" Grid.Column="1" 
-                      HorizontalOptions="Center" Padding="5"/>
+                    <Label x:Name="StatusLabel" 
+                           Text="Not connected" 
+                           FontSize="14" 
+                           HorizontalOptions="Center"
+                           TextColor="#cbd5e0"/>
+                </VerticalStackLayout>
+            </Frame>
 
-                <Label x:Name="GameStatusLabel" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" 
-                       Text="Place your ships (Use Rotate button)" 
-                       HorizontalOptions="Center" FontSize="12"/>
+            <Frame BackgroundColor="#4a5568" CornerRadius="12" Padding="15" HasShadow="True" IsVisible="{Binding Source={x:Reference ServersListView}, Path=IsVisible}">
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout>
+                        <Label Text="🌐 AVAILABLE SERVERS" 
+                               FontSize="12" 
+                               FontAttributes="Bold" 
+                               TextColor="#e2e8f0"/>
+                        <Label Text="{Binding Source={x:Reference ServersListView}, Path=ItemsSource.Count, StringFormat=' ({0})'}"
+                               FontSize="12"
+                               TextColor="#cbd5e0"/>
+                    </HorizontalStackLayout>
+
+                    <Frame BackgroundColor="#718096" CornerRadius="8" Padding="0" HasShadow="False">
+                        <ListView x:Name="ServersListView" 
+                                  HeightRequest="100"
+                                  ItemSelected="OnServerSelected"
+                                  SeparatorVisibility="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <ViewCell>
+                                        <Grid Padding="15,10" BackgroundColor="Transparent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <VerticalStackLayout Grid.Column="0">
+                                                <Label Text="{Binding Name}" 
+                                                       FontSize="14" 
+                                                       FontAttributes="Bold"
+                                                       TextColor="#f7fafc"/>
+                                                <Label Text="{Binding IP}" 
+                                                       FontSize="12"
+                                                       TextColor="#e2e8f0"/>
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" 
+                                                   Text="➡️" 
+                                                   FontSize="16"
+                                                   VerticalOptions="Center"/>
+                                        </Grid>
+                                    </ViewCell>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Frame>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame BackgroundColor="#4a5568" CornerRadius="12" Padding="15" HasShadow="True">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="🚢 SHIP PLACEMENT" 
+                           FontSize="12" 
+                           FontAttributes="Bold" 
+                           TextColor="#e2e8f0"
+                           HorizontalOptions="Center"/>
+
+                    <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                        <Button x:Name="RotateBtn" 
+                                Text="🔄 Rotate" 
+                                Clicked="OnRotateClicked"
+                                BackgroundColor="#3b82f6"
+                                TextColor="White"
+                                CornerRadius="8"
+                                FontSize="14"
+                                Padding="20,12"/>
+                    </HorizontalStackLayout>
+
+                    <ProgressBar Progress="{Binding Source={x:Reference ShipsProgressLabel}, Path=Text, Converter={StaticResource ProgressConverter}}"
+                                 ProgressColor="#3b82f6"
+                                 BackgroundColor="#718096"
+                                 HeightRequest="8"/>
+
+                    <Label x:Name="ShipsProgressLabel"
+                           Text="Ships: 0/3"
+                           FontSize="12"
+                           HorizontalOptions="Center"
+                           TextColor="#cbd5e0"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame x:Name="SpecialAttacksFrame" 
+                   BackgroundColor="#4a5568" 
+                   CornerRadius="12" 
+                   Padding="15" 
+                   HasShadow="True"
+                   IsVisible="{Binding Source={x:Reference SpecialAttacksStack}, Path=IsVisible}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="💥 SPECIAL ATTACKS" 
+                           FontSize="12" 
+                           FontAttributes="Bold" 
+                           TextColor="#e2e8f0"
+                           HorizontalOptions="Center"/>
+
+                    <StackLayout x:Name="SpecialAttacksStack" 
+                                 Orientation="Horizontal" 
+                                 HorizontalOptions="Center" 
+                                 Spacing="8">
+                        <Button x:Name="LineHorizontalBtn" 
+                                Text="➖ Horizontal" 
+                                Clicked="OnLineHorizontalClicked"
+                                BackgroundColor="#10b981"
+                                TextColor="White"
+                                CornerRadius="8"
+                                FontSize="12"
+                                FontAttributes="Bold"
+                                Padding="15,10"/>
+                        <Button x:Name="LineVerticalBtn" 
+                                Text="📏 Vertical" 
+                                Clicked="OnLineVerticalClicked"
+                                BackgroundColor="#3b82f6"
+                                TextColor="White"
+                                CornerRadius="8"
+                                FontSize="12"
+                                FontAttributes="Bold"
+                                Padding="15,10"/>
+                        <Button x:Name="Area3x3Btn" 
+                                Text="🔲 3x3 Area" 
+                                Clicked="OnArea3x3Clicked"
+                                BackgroundColor="#f59e0b"
+                                TextColor="White"
+                                CornerRadius="8"
+                                FontSize="12"
+                                FontAttributes="Bold"
+                                Padding="15,10"/>
+                    </StackLayout>
+
+                    <Label x:Name="SpecialAttackStatusLabel"
+                           Text="Select special attack and click on enemy board"
+                           FontSize="11"
+                           HorizontalOptions="Center"
+                           TextColor="#cbd5e0"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame BackgroundColor="#4a5568" CornerRadius="12" Padding="15" HasShadow="True">
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="🎯 BATTLEFIELD" 
+                           FontSize="12" 
+                           FontAttributes="Bold" 
+                           TextColor="#e2e8f0"
+                           HorizontalOptions="Center"/>
+
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="20">
+                        <Frame Grid.Row="0" Grid.Column="0" 
+                               BackgroundColor="#2c5282" 
+                               CornerRadius="8" 
+                               Padding="10"
+                               HasShadow="True">
+                            <VerticalStackLayout Spacing="5">
+                                <Label Text="YOUR FLEET" 
+                                       FontSize="11" 
+                                       FontAttributes="Bold" 
+                                       TextColor="#bee3f8"
+                                       HorizontalOptions="Center"/>
+                                <Grid x:Name="PlayerGrid" 
+                                      HorizontalOptions="Center" 
+                                      Padding="5"
+                                      BackgroundColor="#4a5568"
+                                      HeightRequest="200"
+                                      WidthRequest="200"/>
+                            </VerticalStackLayout>
+                        </Frame>
+
+                        <Frame Grid.Row="0" Grid.Column="1" 
+                               BackgroundColor="#f87171" 
+                               CornerRadius="8" 
+                               Padding="10"
+                               HasShadow="True">
+                            <VerticalStackLayout Spacing="5">
+                                <Label Text="ENEMY FLEET" 
+                                       FontSize="11" 
+                                       FontAttributes="Bold" 
+                                       TextColor="#fef3c7"
+                                       HorizontalOptions="Center"/>
+                                <Grid x:Name="EnemyGrid" 
+                                      HorizontalOptions="Center" 
+                                      Padding="5"
+                                      BackgroundColor="#4a5568"
+                                      HeightRequest="200"
+                                      WidthRequest="200"/>
+                            </VerticalStackLayout>
+                        </Frame>
+
+                        <Frame Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                               BackgroundColor="#718096" 
+                               CornerRadius="8" 
+                               Padding="12"
+                               HasShadow="False">
+                            <Label x:Name="GameStatusLabel" 
+                                   Text="Place your ships (Use Rotate button)" 
+                                   HorizontalOptions="Center" 
+                                   FontSize="13"
+                                   TextColor="#f7fafc"
+                                   FontAttributes="Bold"/>
+                        </Frame>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button x:Name="ReadyBtn" 
+                        Grid.Column="0"
+                        Text="✅ READY" 
+                        Clicked="OnReadyClicked"
+                        IsEnabled="False"
+                        BackgroundColor="#22c55e"
+                        TextColor="White"
+                        CornerRadius="8"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        Padding="20,15"/>
+                <Button x:Name="DisconnectBtn" 
+                        Grid.Column="1"
+                        Text="🔌 DISCONNECT" 
+                        Clicked="OnDisconnectClicked"
+                        IsEnabled="False"
+                        BackgroundColor="#718096"
+                        TextColor="White"
+                        CornerRadius="8"
+                        FontSize="14"
+                        FontAttributes="Bold"
+                        Padding="20,15"/>
             </Grid>
-
-            <Button x:Name="ReadyBtn" 
-                    Text="Ready" 
-                    Clicked="OnReadyClicked"
-                    IsEnabled="False"/>
-            <Button x:Name="DisconnectBtn" 
-                    Text="Disconnect" 
-                    Clicked="OnDisconnectClicked"
-                    IsEnabled="False"/>
 
         </VerticalStackLayout>
     </ScrollView>

@@ -354,7 +354,8 @@ namespace SeaBattle
                 else
                 {
                     DisplayAlert("Cannot Place Ship",
-                        $"Cannot place {gameEngine.CurrentShipSize}-cell ship at position {x},{y}. Try another location.",
+                        $"Cannot place {gameEngine.CurrentShipSize}-cell ship at position {x},{y}. " +
+                        "Ships cannot be placed next to each other or outside the board.",
                         "OK");
                 }
             }
